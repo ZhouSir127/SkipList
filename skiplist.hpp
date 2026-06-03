@@ -189,15 +189,19 @@ void SkipList<K, V>::delete_element(const K& key) {
     Node<K, V>* current = _header; 
     std::vector<Node<K, V>*> update(_max_level + 1, nullptr);
 
-    for (int i = _skip_list_level; i >= 0; i--) {
-        while (current->forward[i] != nullptr && current->forward[i]->get_key() < key) {
-            current = current->forward[i];
+    for (int i = _skip_list_level; i >= 0; --i) {
+        while (current->forward[i] ){
+            if(current->forward[i]->get_key() < key ) 
+                current = current->forward[i];
+            else if(current->forward[i]->get_key() == key) 
+                update[i] = current; //当前层的下一个节点的k=目标k了(找到了)，记录当前层的前驱节点，后续删除目标节点时需要更新这些前驱节点的 forward 指针 
+            else
+                break; //当前层没有目标k，向下一层继续
         }
-        update[i] = current;
-    }
+    }//update记录每一层目标节点的可能前驱
 
     current = current->forward[0];
-    if (current != nullptr && current->get_key() == key) {
+    if (current && current->get_key() == key) {
         for (int i = 0; i <= _skip_list_level; i++) {
             if (update[i]->forward[i] != current) break;
             update[i]->forward[i] = current->forward[i];
