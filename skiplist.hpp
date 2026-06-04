@@ -1,8 +1,3 @@
-/* ************************************************************************
- > File Name:     skiplist.hpp
- > Description:   High-Performance SkipList (KV Storage Engine)
- ************************************************************************/
-
 #ifndef SKIPLIST_HPP
 #define SKIPLIST_HPP
 
@@ -16,13 +11,12 @@
 #include <random>
 #include <vector>
 
-#include <new>          // 必须引入，用于 Placement New 连续内存分配
-#include <mutex>        // 用于 std::unique_lock
-#include <shared_mutex> // 用于读写锁 std::shared_mutex 和 std::shared_lock (需要 C++17)
+#include <new>       
+#include <mutex>        
+#include <shared_mutex>
 #include <functional>
 #include <shared_mutex>
 
-// 节点类模板
 template<typename K, typename V> 
 class Node {
 public:
@@ -72,16 +66,13 @@ public:
 private:
     int get_random_level();
     Node<K, V>* create_node(int level, const K& k, const V& v);
-    // void get_key_value_from_string(const std::string& str, std::string* key, std::string* value);
-    // bool is_valid_string(const std::string& str);
-    
+
     int _max_level;
     int _skip_list_level;
     Node<K, V>* _header;
     int _element_count;
 
     mutable std::shared_timed_mutex _rw_mutex;
-
 };
 
 
@@ -252,17 +243,4 @@ void SkipList<K, V>::traverse(std::function<void(const K&, const V&)> callback) 
     }
 }
 
-
-// template<typename K, typename V>
-// void SkipList<K, V>::get_key_value_from_string(const std::string& str, std::string* key, std::string* value) {
-//     if(!is_valid_string(str)) return;
-//     *key = str.substr(0, str.find(_delimiter));
-//     *value = str.substr(str.find(_delimiter) + 1, str.length());
-// }
-
-// template<typename K, typename V>
-// bool SkipList<K, V>::is_valid_string(const std::string& str) {
-//     return !str.empty() && str.find(_delimiter) != std::string::npos;
-// }
-
-#endif // SKIPLIST_HPP
+#endif 
