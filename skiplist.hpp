@@ -19,6 +19,8 @@
 #include <new>          // 必须引入，用于 Placement New 连续内存分配
 #include <mutex>        // 用于 std::unique_lock
 #include <shared_mutex> // 用于读写锁 std::shared_mutex 和 std::shared_lock (需要 C++17)
+#include <functional>
+#include <shared_mutex>
 
 // 节点类模板
 template<typename K, typename V> 
@@ -62,8 +64,7 @@ public:
     void delete_element(const K& key);
     
     void display_list();
-    void dump_file(const std::string& filepath = "store/dumpFile");
-    void load_file(const std::string& filepath = "store/dumpFile");
+    void traverse(std::function<void(const K&, const V&)> callback) const;
     
     void clear();
     int size() const;
@@ -71,8 +72,8 @@ public:
 private:
     int get_random_level();
     Node<K, V>* create_node(int level, const K& k, const V& v);
-    void get_key_value_from_string(const std::string& str, std::string* key, std::string* value);
-    bool is_valid_string(const std::string& str);
+    // void get_key_value_from_string(const std::string& str, std::string* key, std::string* value);
+    // bool is_valid_string(const std::string& str);
     
     int _max_level;
     int _skip_list_level;
@@ -80,7 +81,7 @@ private:
     int _element_count;
 
     mutable std::shared_timed_mutex _rw_mutex;
-    std::string _delimiter = ":";
+
 };
 
 
@@ -240,50 +241,28 @@ void SkipList<K, V>::display_list() {
     }
 }
 
-// 【核心优化5】：将文件流对象设计为局部变量，随用随关，避免占用系统 fd 资源
-template<typename K, typename V> 
-void SkipList<K, V>::dump_file(const std::string& filepath) {
-    std::shared_lock<std::shared_timed_mutex> lock(_rw_mutex);
-    std::ofstream file_writer(filepath);
-    if (!file_writer.is_open()) return;
-
+template<typename K, typename V>
+void SkipList<K, V>::traverse(std::function<void(const K&, const V&)> callback) const {
+    std::shared_lock<std::shared_timed_mutex> lock(_rw_mutex); 
+    
     Node<K, V>* node = _header->forward[0]; 
-    while (node != nullptr) {
-        file_writer << node->get_key() << _delimiter << node->get_value() << "\n";
+    while (node) {
+        callback(node->get_key(), node->get_value()); // 将数据安全地“推”给外部回调
         node = node->forward[0];
     }
-    file_writer.flush();
-    file_writer.close();
 }
 
-template<typename K, typename V> 
-void SkipList<K, V>::load_file(const std::string& filepath) {
-    std::shared_lock<std::shared_timed_mutex> lock(_rw_mutex);
-    std::ifstream file_reader(filepath);
-    if (!file_reader.is_open()) return;
 
-    std::string line;
-    std::string key_str, value_str;
-    while (getline(file_reader, line)) {
-        get_key_value_from_string(line, &key_str, &value_str);
-        if (key_str.empty() || value_str.empty()) continue;
-        
-        // 假定 K 为 int, V 为 std::string，工业级项目中此处应引入泛型反序列化组件
-        insert_element(std::stoi(key_str), value_str); 
-    }
-    file_reader.close();
-}
+// template<typename K, typename V>
+// void SkipList<K, V>::get_key_value_from_string(const std::string& str, std::string* key, std::string* value) {
+//     if(!is_valid_string(str)) return;
+//     *key = str.substr(0, str.find(_delimiter));
+//     *value = str.substr(str.find(_delimiter) + 1, str.length());
+// }
 
-template<typename K, typename V>
-void SkipList<K, V>::get_key_value_from_string(const std::string& str, std::string* key, std::string* value) {
-    if(!is_valid_string(str)) return;
-    *key = str.substr(0, str.find(_delimiter));
-    *value = str.substr(str.find(_delimiter) + 1, str.length());
-}
-
-template<typename K, typename V>
-bool SkipList<K, V>::is_valid_string(const std::string& str) {
-    return !str.empty() && str.find(_delimiter) != std::string::npos;
-}
+// template<typename K, typename V>
+// bool SkipList<K, V>::is_valid_string(const std::string& str) {
+//     return !str.empty() && str.find(_delimiter) != std::string::npos;
+// }
 
 #endif // SKIPLIST_HPP
